@@ -35,3 +35,19 @@ CONFIG_LV_DEF_REFR_PERIOD=5
 # timer on the table for power savings that don't matter here.
 CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
 CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ=240
+
+# lv_snapshot_take() for the on-device screenshot feature (main/Debug).
+CONFIG_LV_USE_SNAPSHOT=y
+
+# lv_qrcode for the Guitar Vault pairing screen (main/Pairing).
+CONFIG_LV_USE_QRCODE=y
+
+# ESP-IDF's default console channel is UART0, which isn't wired to anything
+# on this board -- there's no CH343 bridge despite what Waveshare's docs
+# claim (see README), so UART0 just floats. The only channel that's ever
+# actually worked for logs/flashing this whole project is the native USB
+# Serial/JTAG controller. Making it the PRIMARY console (not just the
+# secondary mirror ESP-IDF defaults to alongside UART0) gives us a working
+# stdin on that same port, which the screenshot feature needs to receive
+# its trigger command from the host.
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y

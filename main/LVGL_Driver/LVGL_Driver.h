@@ -20,3 +20,10 @@ void LVGL_Init(void);
 // made it unreliable on this hardware.
 typedef void (*lvgl_swipe_cb_t)(bool swipe_up);
 void LVGL_Driver_SetSwipeCallback(lvgl_swipe_cb_t cb);
+
+// Same heuristic, horizontal axis. Whichever axis has the larger release-time
+// delta (and clears the threshold) wins for a given gesture -- a vertical
+// drag never also fires this, and vice versa. Called with true for a
+// right-to-left swipe, false for left-to-right.
+typedef void (*lvgl_horizontal_swipe_cb_t)(bool swipe_left);
+void LVGL_Driver_SetHorizontalSwipeCallback(lvgl_horizontal_swipe_cb_t cb);

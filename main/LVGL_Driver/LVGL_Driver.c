@@ -20,7 +20,10 @@ static uint32_t lvgl_tick_cb(void)
 }
 
 static lvgl_swipe_cb_t s_swipe_cb = NULL;
+static lvgl_horizontal_swipe_cb_t s_horizontal_swipe_cb = NULL;
 static bool s_touch_was_down = false;
+static int32_t s_touch_start_x = 0;
+static int32_t s_touch_last_x = 0;
 static int32_t s_touch_start_y = 0;
 static int32_t s_touch_last_y = 0;
 
@@ -29,6 +32,11 @@ static int32_t s_touch_last_y = 0;
 void LVGL_Driver_SetSwipeCallback(lvgl_swipe_cb_t cb)
 {
     s_swipe_cb = cb;
+}
+
+void LVGL_Driver_SetHorizontalSwipeCallback(lvgl_horizontal_swipe_cb_t cb)
+{
+    s_horizontal_swipe_cb = cb;
 }
 
 static void touchpad_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
@@ -48,15 +56,29 @@ static void touchpad_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
 
         if (!s_touch_was_down) {
             s_touch_was_down = true;
+            s_touch_start_x = x[0];
             s_touch_start_y = y[0];
         }
+        s_touch_last_x = x[0];
         s_touch_last_y = y[0];
     } else {
         if (s_touch_was_down) {
             s_touch_was_down = false;
+            int32_t dx = s_touch_last_x - s_touch_start_x;
             int32_t dy = s_touch_last_y - s_touch_start_y;
-            if (s_swipe_cb && (dy >= SWIPE_MIN_DISTANCE_PX || dy <= -SWIPE_MIN_DISTANCE_PX)) {
-                s_swipe_cb(dy < 0);
+            int32_t adx = dx < 0 ? -dx : dx;
+            int32_t ady = dy < 0 ? -dy : dy;
+
+            // Dominant axis wins -- a gesture is either a tile-switch swipe
+            // or a card-browse swipe, never both.
+            if (ady >= adx) {
+                if (s_swipe_cb && ady >= SWIPE_MIN_DISTANCE_PX) {
+                    s_swipe_cb(dy < 0);
+                }
+            } else {
+                if (s_horizontal_swipe_cb && adx >= SWIPE_MIN_DISTANCE_PX) {
+                    s_horizontal_swipe_cb(dx < 0);
+                }
             }
         }
         data->state = LV_INDEV_STATE_RELEASED;

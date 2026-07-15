@@ -66,6 +66,22 @@ idf.py -p /dev/ttyACM0 flash   # port name varies
 First build will pull `lvgl/lvgl` and `espressif/esp_lcd_touch` from the
 component registry automatically (see `main/idf_component.yml`).
 
+## Screenshots
+
+The firmware listens on its USB serial port for a `SCREENSHOT` command and
+responds with the current screen as base64-encoded RGB565. From the host:
+
+```sh
+pip install pyserial pillow
+python3 tools/screenshot.py
+```
+
+Auto-detects the board by USB VID:PID, no `--port` needed unless more than
+one matches. With no output path, saves a timestamped PNG under
+`~/Pictures/Screenshots/esp32`.
+
+Takes a few seconds — it's ~450KB of raw pixel data over a serial link.
+
 ## How it works
 
 - `main/LCD_Driver`, `Touch_Driver`, `EXIO`, `I2C_Driver`, `LVGL_Driver`,
@@ -90,6 +106,12 @@ component registry automatically (see `main/idf_component.yml`).
 - `main/fonts/` — custom-generated LVGL fonts (DejaVu Sans, `lv_font_conv`)
   used everywhere instead of the bundled Montserrat: Montserrat's "G" is
   too easily mistaken for a "C" at these sizes on this display.
+- `main/Debug/screenshot.c` — the `SCREENSHOT` serial command (see
+  Screenshots above). Renders via `lv_snapshot_take_to_buf()` into a
+  PSRAM buffer allocated directly with `heap_caps_malloc`, not LVGL's own
+  allocator -- LVGL's built-in `lv_malloc` is a fixed 64KB pool
+  (`CONFIG_LV_MEM_SIZE_KILOBYTES`), nowhere near big enough for a 450KB
+  frame, regardless of how much PSRAM is actually free.
 
 ## Provenance
 
