@@ -16,6 +16,7 @@
 #include "guitar_collection.h"
 #include "guitar_collection_ui.h"
 #include "settings_ui.h"
+#include "loading_ui.h"
 #include "screenshot.h"
 
 #include "lvgl.h"
@@ -34,13 +35,17 @@ static int s_active_tile;
 // cut only ever renders one full screen at a time (~40-60ms).
 static void on_swipe(bool swipe_up)
 {
-    (void)swipe_up; // any direction just advances to the next tile
-    if (MetronomeUI_IsModalOpen()) {
-        // Don't let a drag across the BPM-entry keypad switch screens.
+    if (LoadingUI_IsActive() || MetronomeUI_IsModalOpen()) {
+        // Don't let a drag across the boot loading screen (or the
+        // BPM-entry keypad) switch screens. The raw-coordinate swipe
+        // heuristic in LVGL_Driver.c doesn't know or care what's drawn on
+        // top, so this has to be checked explicitly.
         return;
     }
     lv_obj_add_flag(s_tiles[s_active_tile], LV_OBJ_FLAG_HIDDEN);
-    s_active_tile = (s_active_tile + 1) % NUM_TILES;
+    // Up = forward a tile, down = back a tile.
+    s_active_tile = swipe_up ? (s_active_tile + 1) % NUM_TILES
+                              : (s_active_tile - 1 + NUM_TILES) % NUM_TILES;
     lv_obj_remove_flag(s_tiles[s_active_tile], LV_OBJ_FLAG_HIDDEN);
 
     if (s_active_tile == 3) {
@@ -56,6 +61,9 @@ static void on_swipe(bool swipe_up)
 // MetronomeUI_IsModalOpen() above.
 static void on_horizontal_swipe(bool swipe_left)
 {
+    if (LoadingUI_IsActive()) {
+        return;
+    }
     if (s_active_tile == 2 && GuitarCollectionUI_IsActive()) {
         GuitarCollectionUI_HandleSwipe(swipe_left);
     } else if (s_active_tile == 3) {
@@ -106,6 +114,9 @@ void app_main(void)
     CircleOfFifthsUI_Create(s_tiles[1]);
     GuitarCollectionUI_Create(s_tiles[2]);
     SettingsUI_Create(s_tiles[3]);
+    // Created last so it renders on top of every tile (LVGL draws siblings
+    // in creation order) -- masks the boot flicker below for its first 5s.
+    LoadingUI_Create(root_screen);
     Screenshot_Init();
 
     // Render the first real frame before starting WiFi. The panel is already
@@ -145,6 +156,7 @@ void app_main(void)
         WiFiProvisioningUI_Tick();
         PairingUI_Tick();
         GuitarCollectionUI_Tick();
+        LoadingUI_Tick();
 
         lv_timer_handler();
     }

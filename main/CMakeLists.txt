@@ -16,6 +16,7 @@ set(SRC_FILES
     "GuitarCollection/guitar_collection.c"
     "GuitarCollection/guitar_collection_ui.c"
     "Settings/settings_ui.c"
+    "Loading/loading_ui.c"
     "Debug/screenshot.c"
     "fonts/lv_font_montserrat_18_bold.c"
     "fonts/lv_font_dejavu_18.c"
@@ -38,6 +39,7 @@ set(INC_DIRS
     "Pairing"
     "GuitarCollection"
     "Settings"
+    "Loading"
     "Debug"
 )
 
