@@ -1,0 +1,37 @@
+# Board: Waveshare ESP32-S3-Touch-LCD-2.1 (8MB octal PSRAM, 16MB flash)
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# LVGL: RGB565 to match the panel's 16-bit parallel bus
+CONFIG_LV_COLOR_DEPTH_16=y
+
+# Fonts used by the metronome UI + Circle of Fifths screen
+CONFIG_LV_FONT_MONTSERRAT_14=y
+CONFIG_LV_FONT_MONTSERRAT_18=y
+CONFIG_LV_FONT_MONTSERRAT_24=y
+CONFIG_LV_FONT_MONTSERRAT_28=y
+CONFIG_LV_FONT_MONTSERRAT_32=y
+CONFIG_LV_FONT_MONTSERRAT_48=y
+
+# Default 3.5KB main-task stack overflows while MetronomeUI_Create() builds
+# the widget tree (confirmed on real hardware: "stack overflow in task main"
+# right after LVGL init). Give it real headroom.
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=12288
+
+# Default redraw-timer period (33ms, ~30Hz) makes the pendulum needle's
+# +-60 degree sweep visibly choppy since it only gets ~15 animation steps
+# per beat. Our main loop already polls lv_timer_handler() every 5ms, so
+# let LVGL actually redraw that often too.
+CONFIG_LV_DEF_REFR_PERIOD=5
+
+# ESP-IDF's own default for this chip is 160MHz. This is USB-powered and
+# sitting on a stand, not battery-run, so there's no reason to leave ~1/3
+# of the CPU's headroom for LVGL rendering / touch polling / the metronome
+# timer on the table for power savings that don't matter here.
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ=240
