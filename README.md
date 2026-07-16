@@ -1,4 +1,4 @@
-# Musician Dial
+# Musician Dial α
 
 ESP-IDF v5 firmware for the Waveshare **ESP32-S3-Touch-LCD-2.1** (480×480 round
 capacitive touch display) — a dedicated hardware practice tool for musicians.
@@ -57,7 +57,7 @@ Needs the ESP-IDF toolchain (v5.1+).
 
 ```sh
 . $HOME/esp/esp-idf/export.sh   # or wherever you installed ESP-IDF
-cd musician-dial
+cd musician-dial-alpha
 idf.py set-target esp32s3
 idf.py build
 idf.py -p /dev/ttyACM0 flash   # port name varies

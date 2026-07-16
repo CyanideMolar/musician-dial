@@ -200,10 +200,11 @@ static esp_err_t root_get_handler(httpd_req_t *req)
 
     size_t off = 0;
     off += snprintf(html + off, cap - off,
-        "<!doctype html><html><head><meta name=viewport content='width=device-width,initial-scale=1'>"
-        "<title>Musician Dial Setup</title></head>"
+        "<!doctype html><html><head><meta charset=utf-8>"
+        "<meta name=viewport content='width=device-width,initial-scale=1'>"
+        "<title>Musician Dial \xCE\xB1 Setup</title></head>"
         "<body style='font-family:sans-serif;max-width:400px;margin:2em auto;padding:0 1em'>"
-        "<h2>Connect Musician Dial to Wi-Fi</h2>"
+        "<h2>Connect Musician Dial \xCE\xB1 to Wi-Fi</h2>"
         "<form method=POST action=/connect>"
         "<label>Network</label><br>"
         "<select name=ssid style='width:100%%;padding:8px;font-size:1em'>");
@@ -335,7 +336,10 @@ void WiFiProvisioning_StartSetup(void)
 
     uint8_t mac[6];
     esp_read_mac(mac, ESP_MAC_WIFI_SOFTAP);
-    snprintf(s_ap_ssid, sizeof(s_ap_ssid), "MusicianDial-%02X%02X", mac[4], mac[5]);
+    // Plain ASCII "Alpha", not the literal Greek letter used in display text
+    // elsewhere -- broadcast SSIDs are safer kept ASCII-only rather than
+    // relying on every phone/OS's WiFi picker rendering UTF-8 correctly.
+    snprintf(s_ap_ssid, sizeof(s_ap_ssid), "MusicianDialAlpha-%02X%02X", mac[4], mac[5]);
     generate_random_password(s_ap_pass, sizeof(s_ap_pass));
 
     esp_wifi_stop();

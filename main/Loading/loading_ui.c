@@ -38,7 +38,7 @@ void LoadingUI_Create(lv_obj_t *parent)
     lv_obj_set_style_bg_opa(s_overlay, LV_OPA_COVER, 0);
 
     lv_obj_t *title = lv_label_create(s_overlay);
-    lv_label_set_text(title, "Musician Dial");
+    lv_label_set_text(title, "Musician Dial \xCE\xB1"); // "Musician Dial α" -- proof-of-concept branding
     lv_obj_set_style_text_font(title, &lv_font_dejavu_32, 0);
     lv_obj_set_style_text_color(title, lv_color_hex(COLOR_TEXT), 0);
     lv_obj_align(title, LV_ALIGN_CENTER, 0, -80);
