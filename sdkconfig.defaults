@@ -7,6 +7,22 @@ CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
 CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 
+# ESP-IDF's Kconfig default here is 100Hz (10ms/tick). main.c's main loop
+# calls `vTaskDelay(pdMS_TO_TICKS(5))`, intending a 5ms cadence -- but
+# pdMS_TO_TICKS() truncates to whole ticks, so at 100Hz that's
+# (5*100)/1000 = 0 ticks, i.e. vTaskDelay(0). That doesn't block for any
+# real time, just yields once -- confirmed on real hardware by a heap-stats
+# log meant to fire every ~60s (12000 iterations at the intended 5ms each)
+# instead firing every ~280ms, meaning the loop was actually running ~200x
+# faster than every "runs every 5ms" comment in this codebase assumes.
+# Investigating a UI freeze partway into a long-running practice session --
+# this main loop drives touch polling, LVGL redraws, and every *_Tick()
+# function in the app, so running it 200x hotter than intended for 15+
+# minutes straight is a very plausible way to exhaust something. 1000Hz
+# makes pdMS_TO_TICKS(5) actually equal 5 ticks, matching what the existing
+# code already assumes everywhere -- no call-site changes needed.
+CONFIG_FREERTOS_HZ=1000
+
 # LVGL: RGB565 to match the panel's 16-bit parallel bus
 CONFIG_LV_COLOR_DEPTH_16=y
 
@@ -41,6 +57,18 @@ CONFIG_LV_USE_SNAPSHOT=y
 
 # lv_qrcode for the Guitar Vault pairing screen (main/Pairing).
 CONFIG_LV_USE_QRCODE=y
+
+# LVGL's own allocator (lv_malloc) uses a fixed-size pool, separate from the
+# rest of the heap -- widget structs, styles, animations, and label text
+# buffers (e.g. the practice-session timer's lv_label_set_text() call, once
+# a second for as long as a session runs) all come out of it. The Kconfig
+# default is only 64KB; investigating a real-hardware freeze during a long
+# practice session (17-18 minutes in) that's consistent with this pool
+# fragmenting/exhausting under sustained once-a-second reallocation on top
+# of every other widget this app already creates across 4 tiles + Settings
+# sub-pages + the review dialog. Doubled for headroom -- PSRAM is otherwise
+# barely used (see LVGL_Driver.c's draw buffers), so this costs nothing.
+CONFIG_LV_MEM_SIZE_KILOBYTES=128
 
 # ESP-IDF's default console channel is UART0, which isn't wired to anything
 # on this board -- there's no CH343 bridge despite what Waveshare's docs

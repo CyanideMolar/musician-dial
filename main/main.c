@@ -1,6 +1,9 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "esp_heap_caps.h"
+#include "esp_log.h"
+
 #include "I2C_Driver.h"
 #include "TCA9554PWR.h"
 #include "ST7701S.h"
@@ -73,6 +76,28 @@ static void on_horizontal_swipe(bool swipe_left)
     } else if (s_active_tile == 3) {
         SettingsUI_HandleSwipe(swipe_left);
     }
+}
+
+static const char *TAG = "main";
+
+// Investigating a real-hardware freeze during a long practice session
+// (17-18 minutes in) -- a leading theory is LVGL's own fixed-size memory
+// pool (lv_malloc, see sdkconfig.defaults) fragmenting or filling up under
+// the practice-session timer's once-a-second lv_label_set_text() calls
+// stacked on top of every other widget this app already creates. Logging
+// both the system heap and LVGL's own pool stats periodically so a repeat
+// freeze leaves a trail (free size trending toward zero, fragmentation
+// climbing) instead of just silence.
+#define HEAP_LOG_INTERVAL_TICKS 12000 // ~60s at the main loop's 5ms tick
+static uint32_t s_heap_log_ticks = 0;
+
+static void log_heap_stats(void)
+{
+    lv_mem_monitor_t mon;
+    lv_mem_monitor(&mon);
+    ESP_LOGI(TAG, "heap: sys_free=%u lvgl_free=%u lvgl_biggest=%u lvgl_used_pct=%u%% lvgl_frag_pct=%u%%",
+             (unsigned)esp_get_free_heap_size(), (unsigned)mon.free_size, (unsigned)mon.free_biggest_size,
+             mon.used_pct, mon.frag_pct);
 }
 
 static lv_obj_t *make_screen_container(lv_obj_t *parent)
@@ -162,6 +187,11 @@ void app_main(void)
         PairingUI_Tick();
         GuitarCollectionUI_Tick();
         LoadingUI_Tick();
+
+        if (++s_heap_log_ticks >= HEAP_LOG_INTERVAL_TICKS) {
+            s_heap_log_ticks = 0;
+            log_heap_stats();
+        }
 
         lv_timer_handler();
     }
