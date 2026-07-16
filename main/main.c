@@ -15,6 +15,7 @@
 #include "pairing_ui.h"
 #include "guitar_collection.h"
 #include "guitar_collection_ui.h"
+#include "practice_session.h"
 #include "settings_ui.h"
 #include "loading_ui.h"
 #include "screenshot.h"
@@ -35,11 +36,11 @@ static int s_active_tile;
 // cut only ever renders one full screen at a time (~40-60ms).
 static void on_swipe(bool swipe_up)
 {
-    if (LoadingUI_IsActive() || MetronomeUI_IsModalOpen()) {
-        // Don't let a drag across the boot loading screen (or the
-        // BPM-entry keypad) switch screens. The raw-coordinate swipe
-        // heuristic in LVGL_Driver.c doesn't know or care what's drawn on
-        // top, so this has to be checked explicitly.
+    if (LoadingUI_IsActive() || MetronomeUI_IsModalOpen() || GuitarCollectionUI_IsModalOpen()) {
+        // Don't let a drag across the boot loading screen (or the BPM-entry
+        // keypad, or the practice-session review dialog) switch screens.
+        // The raw-coordinate swipe heuristic in LVGL_Driver.c doesn't know
+        // or care what's drawn on top, so this has to be checked explicitly.
         return;
     }
     lv_obj_add_flag(s_tiles[s_active_tile], LV_OBJ_FLAG_HIDDEN);
@@ -55,16 +56,19 @@ static void on_swipe(bool swipe_up)
     }
 }
 
-// Horizontal swipes mean something on the Guitar Vault tile (browse cards,
-// once there's a carousel to browse) and the Settings tile (cycle its
-// sub-pages) -- everywhere else this is a no-op, same guard-clause shape as
+// Horizontal swipes mean something on the Circle of Fifths tile (toggle
+// major/minor), the Guitar Vault tile (browse cards, once there's a
+// carousel to browse), and the Settings tile (cycle its sub-pages) --
+// everywhere else this is a no-op, same guard-clause shape as
 // MetronomeUI_IsModalOpen() above.
 static void on_horizontal_swipe(bool swipe_left)
 {
-    if (LoadingUI_IsActive()) {
+    if (LoadingUI_IsActive() || GuitarCollectionUI_IsModalOpen()) {
         return;
     }
-    if (s_active_tile == 2 && GuitarCollectionUI_IsActive()) {
+    if (s_active_tile == 1) {
+        CircleOfFifthsUI_HandleSwipe(swipe_left);
+    } else if (s_active_tile == 2 && GuitarCollectionUI_IsActive()) {
         GuitarCollectionUI_HandleSwipe(swipe_left);
     } else if (s_active_tile == 3) {
         SettingsUI_HandleSwipe(swipe_left);
@@ -134,6 +138,7 @@ void app_main(void)
     WiFiProvisioning_Init();
     Pairing_Init();
     GuitarCollection_Init();
+    PracticeSession_Init();
 
     QueueHandle_t beat_queue = Metronome_GetEventQueue();
     metronome_beat_event_t evt;

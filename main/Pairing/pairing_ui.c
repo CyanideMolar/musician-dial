@@ -44,12 +44,22 @@ void PairingUI_Create(lv_obj_t *parent)
     lv_obj_set_style_text_color(title, lv_color_hex(COLOR_TEXT), 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 110);
 
+    // Full-tile, not a smaller centered box -- so TOP_MID offsets below
+    // land at the same absolute Y positions as wifi_provisioning_ui.c's
+    // matching widgets (that file's parent IS the full tile), keeping both
+    // Settings sub-screens visually aligned.
     s_root = lv_obj_create(parent);
     lv_obj_remove_flag(s_root, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_size(s_root, 360, 220);
+    lv_obj_set_size(s_root, lv_pct(100), lv_pct(100));
+    lv_obj_set_pos(s_root, 0, 0);
     lv_obj_set_style_bg_opa(s_root, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(s_root, 0, 0);
-    lv_obj_align(s_root, LV_ALIGN_CENTER, 0, 20);
+    // Default (non-zero) container padding was shifting every child here
+    // down by the pad amount, throwing off alignment with
+    // wifi_provisioning_ui.c's widgets (direct children of the tile, no
+    // wrapping container, so no padding to strip) -- same class of bug
+    // as guitar_collection_ui.c's rating row earlier.
+    lv_obj_set_style_pad_all(s_root, 0, 0);
 
     s_status_label = lv_label_create(s_root);
     lv_label_set_text(s_status_label, "");
@@ -57,14 +67,14 @@ void PairingUI_Create(lv_obj_t *parent)
     lv_obj_set_style_text_color(s_status_label, lv_color_hex(COLOR_TEXT), 0);
     lv_obj_set_style_text_align(s_status_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_long_mode(s_status_label, LV_LABEL_LONG_WRAP);
-    lv_obj_set_width(s_status_label, 340);
-    lv_obj_align(s_status_label, LV_ALIGN_TOP_MID, 0, 0);
+    lv_obj_set_width(s_status_label, 320);
+    lv_obj_align(s_status_label, LV_ALIGN_TOP_MID, 0, 160);
 
     s_qr = lv_qrcode_create(s_root);
     lv_qrcode_set_size(s_qr, 120);
     lv_qrcode_set_dark_color(s_qr, lv_color_hex(0x000000));
     lv_qrcode_set_light_color(s_qr, lv_color_hex(0xFFFFFF));
-    lv_obj_align(s_qr, LV_ALIGN_TOP_MID, 0, 40);
+    lv_obj_align(s_qr, LV_ALIGN_TOP_MID, 0, 215);
     lv_obj_add_flag(s_qr, LV_OBJ_FLAG_HIDDEN);
 
     s_code_label = lv_label_create(s_root);
@@ -72,13 +82,16 @@ void PairingUI_Create(lv_obj_t *parent)
     lv_obj_set_style_text_font(s_code_label, &lv_font_dejavu_18, 0);
     lv_obj_set_style_text_color(s_code_label, lv_color_hex(COLOR_TEXT), 0);
     lv_obj_set_style_text_align(s_code_label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_align(s_code_label, LV_ALIGN_TOP_MID, 0, 168);
+    lv_obj_align(s_code_label, LV_ALIGN_TOP_MID, 0, 345);
     lv_obj_add_flag(s_code_label, LV_OBJ_FLAG_HIDDEN);
 
+    // Closer to vertical center -- safe to move up because this button and
+    // the QR/code (only shown during AWAITING_APPROVAL) are never visible
+    // at the same time, see the state machine in the Tick function below.
     s_action_btn = lv_obj_create(s_root);
     lv_obj_remove_flag(s_action_btn, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_size(s_action_btn, 220, 50);
-    lv_obj_align(s_action_btn, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_obj_set_size(s_action_btn, 220, 60);
+    lv_obj_align(s_action_btn, LV_ALIGN_TOP_MID, 0, 260);
     lv_obj_set_style_radius(s_action_btn, 12, 0);
     lv_obj_set_style_bg_color(s_action_btn, lv_color_hex(COLOR_BTN_START), 0);
     lv_obj_add_event_cb(s_action_btn, action_btn_event_cb, LV_EVENT_CLICKED, NULL);

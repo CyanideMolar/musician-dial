@@ -15,6 +15,7 @@ set(SRC_FILES
     "Pairing/pairing_ui.c"
     "GuitarCollection/guitar_collection.c"
     "GuitarCollection/guitar_collection_ui.c"
+    "PracticeSession/practice_session.c"
     "Settings/settings_ui.c"
     "Loading/loading_ui.c"
     "Debug/screenshot.c"
@@ -23,6 +24,7 @@ set(SRC_FILES
     "fonts/lv_font_dejavu_28.c"
     "fonts/lv_font_dejavu_32.c"
     "fonts/lv_font_dejavu_48.c"
+    "fonts/lv_font_tabler_icons_32.c"
 )
 
 set(INC_DIRS
@@ -38,6 +40,7 @@ set(INC_DIRS
     "WiFiProvisioning"
     "Pairing"
     "GuitarCollection"
+    "PracticeSession"
     "Settings"
     "Loading"
     "Debug"

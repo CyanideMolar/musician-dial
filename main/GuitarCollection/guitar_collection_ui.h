@@ -15,5 +15,9 @@ void GuitarCollectionUI_Tick(void);
 // attempted a load) -- main.c gates horizontal-swipe routing on this.
 bool GuitarCollectionUI_IsActive(void);
 
+// True while the end-of-practice-session review dialog is open. main.c gates
+// both swipe directions on this, same as MetronomeUI_IsModalOpen().
+bool GuitarCollectionUI_IsModalOpen(void);
+
 // true = swipe right-to-left (next card), false = left-to-right (prev card).
 void GuitarCollectionUI_HandleSwipe(bool swipe_left);

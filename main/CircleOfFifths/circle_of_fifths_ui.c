@@ -246,17 +246,17 @@ static void select_key(int index)
     }
 }
 
+// Long-press-for-minor turned out to be unreliable on real hardware (see
+// git history) -- LVGL's touch handling on this screen's tightly-packed
+// wheel buttons kept letting a short-click fire right after the long-press
+// already had, flipping the display back to major on release no matter how
+// that was guarded against. Major/minor is a horizontal swipe now (see
+// CircleOfFifthsUI_HandleSwipe) instead of a per-button gesture; tapping a
+// key just selects it, preserving whichever mode (major/minor) is already
+// showing.
 static void key_tap_cb(lv_event_t *e)
 {
     int index = (int)(intptr_t)lv_event_get_user_data(e);
-    s_showing_minor = false;
-    select_key(index);
-}
-
-static void key_long_press_cb(lv_event_t *e)
-{
-    int index = (int)(intptr_t)lv_event_get_user_data(e);
-    s_showing_minor = true;
     select_key(index);
 }
 
@@ -270,18 +270,11 @@ static lv_obj_t *make_key_button(lv_obj_t *parent, const char *text, int cx, int
     lv_obj_set_style_border_width(btn, 0, 0);
     // Without this, a swipe starting on a wheel button never reaches the
     // screen-level gesture handler (LVGL only sends LV_EVENT_GESTURE to the
-    // exact widget touched, bubbling only if it opts in). Harmless for the
-    // long-press-for-minor gesture below: a stationary long-press never
-    // accumulates enough movement to cross the gesture-detection threshold
-    // in the first place, bubble flag or not.
+    // exact widget touched, bubbling only if it opts in) -- needed now more
+    // than ever since major/minor swipes can originate on any key button.
     lv_obj_add_flag(btn, LV_OBJ_FLAG_GESTURE_BUBBLE);
-    // SHORT_CLICKED (not CLICKED) for the tap case: CLICKED still fires on
-    // release even after a long press, which would flip back to major right
-    // after showing minor. SHORT_CLICKED only fires when no long press
-    // happened, so it pairs correctly with LONG_PRESSED here.
     void *user_data = (void *)(intptr_t)index;
-    lv_obj_add_event_cb(btn, key_tap_cb, LV_EVENT_SHORT_CLICKED, user_data);
-    lv_obj_add_event_cb(btn, key_long_press_cb, LV_EVENT_LONG_PRESSED, user_data);
+    lv_obj_add_event_cb(btn, key_tap_cb, LV_EVENT_CLICKED, user_data);
 
     lv_obj_t *label = lv_label_create(btn);
     lv_label_set_text(label, text);
@@ -385,4 +378,11 @@ void CircleOfFifthsUI_Create(lv_obj_t *parent)
     make_chord_row(parent, 80, &s_chords2_prefix_label, &s_chords2_bold_label);
 
     select_key(0); // default to C major
+}
+
+void CircleOfFifthsUI_HandleSwipe(bool swipe_left)
+{
+    (void)swipe_left; // either direction just toggles major/minor
+    s_showing_minor = !s_showing_minor;
+    select_key(s_selected);
 }

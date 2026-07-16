@@ -223,3 +223,10 @@ bool GuitarCollection_GetName(int index, char *out, size_t out_len)
     strlcpy(out, s_guitars[index].name, out_len);
     return true;
 }
+
+bool GuitarCollection_GetId(int index, char *out, size_t out_len)
+{
+    if (index < 0 || index >= s_guitar_count) return false;
+    strlcpy(out, s_guitars[index].id, out_len);
+    return true;
+}

@@ -45,6 +45,10 @@ void WiFiProvisioningUI_Create(lv_obj_t *parent)
     lv_obj_set_style_text_color(title, lv_color_hex(COLOR_TEXT), 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 110);
 
+    // Shared layout with pairing_ui.c's Guitar Vault Configuration screen --
+    // title/status/secondary-info/button all sit at the same absolute Y
+    // positions on both screens, so switching between them (a horizontal
+    // swipe within Settings) doesn't visibly shift anything.
     s_status_label = lv_label_create(parent);
     lv_label_set_text(s_status_label, "");
     lv_obj_set_style_text_font(s_status_label, &lv_font_dejavu_18, 0);
@@ -52,7 +56,7 @@ void WiFiProvisioningUI_Create(lv_obj_t *parent)
     lv_obj_set_style_text_align(s_status_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_long_mode(s_status_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(s_status_label, 320);
-    lv_obj_align(s_status_label, LV_ALIGN_CENTER, 0, -20);
+    lv_obj_align(s_status_label, LV_ALIGN_TOP_MID, 0, 160);
 
     s_ap_info_label = lv_label_create(parent);
     lv_label_set_text(s_ap_info_label, "");
@@ -61,13 +65,17 @@ void WiFiProvisioningUI_Create(lv_obj_t *parent)
     lv_obj_set_style_text_align(s_ap_info_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_long_mode(s_ap_info_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(s_ap_info_label, 320);
-    lv_obj_align(s_ap_info_label, LV_ALIGN_CENTER, 0, 40);
+    lv_obj_align(s_ap_info_label, LV_ALIGN_TOP_MID, 0, 215);
     lv_obj_add_flag(s_ap_info_label, LV_OBJ_FLAG_HIDDEN);
 
+    // Closer to vertical center -- safe to move up because this button and
+    // s_ap_info_label are never shown at the same time (see the state
+    // machine in the Tick function below), so there's nothing below the
+    // status text for it to collide with.
     s_setup_btn = lv_obj_create(parent);
     lv_obj_remove_flag(s_setup_btn, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_size(s_setup_btn, 220, 60);
-    lv_obj_align(s_setup_btn, LV_ALIGN_CENTER, 0, 60);
+    lv_obj_align(s_setup_btn, LV_ALIGN_TOP_MID, 0, 260);
     lv_obj_set_style_radius(s_setup_btn, 12, 0);
     lv_obj_set_style_bg_color(s_setup_btn, lv_color_hex(COLOR_BTN_START), 0);
     lv_obj_add_event_cb(s_setup_btn, setup_btn_event_cb, LV_EVENT_CLICKED, NULL);

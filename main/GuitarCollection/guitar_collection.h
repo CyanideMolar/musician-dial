@@ -17,3 +17,4 @@ void GuitarCollection_Refresh(void);
 bool GuitarCollection_IsLoaded(void);
 int GuitarCollection_Count(void);
 bool GuitarCollection_GetName(int index, char *out, size_t out_len);
+bool GuitarCollection_GetId(int index, char *out, size_t out_len);

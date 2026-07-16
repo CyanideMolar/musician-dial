@@ -19,6 +19,14 @@
 LV_FONT_DECLARE(lv_font_dejavu_18);
 LV_FONT_DECLARE(lv_font_dejavu_32);
 LV_FONT_DECLARE(lv_font_dejavu_48);
+LV_FONT_DECLARE(lv_font_tabler_icons_32);
+
+// Tabler Icons' "circle-dashed" (U+ED27) and "metronome" (U+FD25) glyphs,
+// pulled into their own small font (main/fonts/lv_font_tabler_icons_32.c) --
+// same merge-a-glyph-font-in approach this project's other fonts already
+// use for FontAwesome icons, just as a standalone 2-glyph font here.
+#define ICON_CIRCLE_DASHED "\xEE\xB4\xA7"
+#define ICON_METRONOME     "\xEF\xB4\xA5"
 
 /* Screen is 480x480, center at (240,240). Interactive/text content is kept
  * within roughly a 190px radius of center so nothing sits under the round
@@ -71,6 +79,7 @@ LV_FONT_DECLARE(lv_font_dejavu_48);
 #define COLOR_NEEDLE        0xFFC857 // gold, matches COLOR_ACCENT_BEAT
 #define COLOR_MARKER         0x2F80ED // blue endpoint markers
 #define COLOR_TEXT           0xE8E8E8
+#define COLOR_TEXT_DIM       0x6B7280 // unselected mode label
 #define COLOR_BTN            0x1F252C
 #define COLOR_BTN_ACTIVE     0x3A4552
 #define COLOR_BTN_START      0x2E7D32
@@ -92,8 +101,9 @@ static lv_obj_t *s_marker_right;
 static lv_obj_t *s_bpm_value_label;
 static lv_obj_t *s_start_stop_btn;
 static lv_obj_t *s_start_stop_label;
-static lv_obj_t *s_mode_btn_ring;
-static lv_obj_t *s_mode_btn_pendulum;
+static lv_obj_t *s_mode_switch;
+static lv_obj_t *s_mode_label_ring;
+static lv_obj_t *s_mode_label_pendulum;
 
 // Long-press the BPM readout to open a numeric-entry dialog instead of
 // stepping one BPM at a time.
@@ -133,17 +143,26 @@ static void apply_mode_visibility(void)
         lv_obj_add_flag(s_ring, LV_OBJ_FLAG_HIDDEN);
     }
 
-    lv_obj_set_style_bg_color(s_mode_btn_ring,
-                               s_mode == DISPLAY_RING ? lv_color_hex(COLOR_BTN_ACTIVE) : lv_color_hex(COLOR_BTN), 0);
-    lv_obj_set_style_bg_color(s_mode_btn_pendulum,
-                               s_mode == DISPLAY_PENDULUM ? lv_color_hex(COLOR_BTN_ACTIVE) : lv_color_hex(COLOR_BTN),
-                               0);
+    // Switch position itself (knob left = Ring, right = Pendulum) is the
+    // primary selected/not-selected signal -- unambiguous regardless of any
+    // theme bevel/shadow, unlike the two-separate-buttons version this
+    // replaced. Dimming the inactive side's label reinforces it further.
+    bool pendulum_selected = (s_mode == DISPLAY_PENDULUM);
+    if (pendulum_selected) {
+        lv_obj_add_state(s_mode_switch, LV_STATE_CHECKED);
+    } else {
+        lv_obj_remove_state(s_mode_switch, LV_STATE_CHECKED);
+    }
+    lv_obj_set_style_text_color(s_mode_label_ring,
+                                 lv_color_hex(pendulum_selected ? COLOR_TEXT_DIM : COLOR_TEXT), 0);
+    lv_obj_set_style_text_color(s_mode_label_pendulum,
+                                 lv_color_hex(pendulum_selected ? COLOR_TEXT : COLOR_TEXT_DIM), 0);
 }
 
-static void mode_btn_event_cb(lv_event_t *e)
+static void mode_switch_event_cb(lv_event_t *e)
 {
-    display_mode_t mode = (display_mode_t)(intptr_t)lv_event_get_user_data(e);
-    s_mode = mode;
+    lv_obj_t *sw = lv_event_get_target(e);
+    s_mode = lv_obj_has_state(sw, LV_STATE_CHECKED) ? DISPLAY_PENDULUM : DISPLAY_RING;
     apply_mode_visibility();
 }
 
@@ -199,6 +218,15 @@ static lv_obj_t *make_button_ex(lv_obj_t *parent, const char *text, int w, int h
     // exact widget the touch began on, bubbling to parents only if they
     // opt in with this flag.
     lv_obj_add_flag(btn, LV_OBJ_FLAG_GESTURE_BUBBLE);
+    // Without this, natural finger tremor during a long-press hold can
+    // drift the touch point off this button and back (even within the same
+    // physical button), which makes LVGL's indev re-detect "the object
+    // under the point" and reset its long-press-sent tracking -- so a
+    // genuinely-long press can still end up firing SHORT_CLICKED on
+    // release, right after LONG_PRESSED already fired. PRESS_LOCK keeps
+    // this button "the pressed one" for the whole gesture regardless of
+    // minor drift.
+    lv_obj_add_flag(btn, LV_OBJ_FLAG_PRESS_LOCK);
     lv_obj_add_event_cb(btn, cb, code, user_data);
 
     lv_obj_t *label = lv_label_create(btn);
@@ -570,12 +598,42 @@ void MetronomeUI_Create(lv_obj_t *parent)
      * y=241 keeps the row's top edge just below the screen's vertical
      * midpoint (240), per request -- all four lower buttons should sit
      * below center, not straddle it. */
-    s_mode_btn_ring = make_button(screen, "Ring", 140, 58, SCREEN_CENTER_X - 147, 241,
-                                   mode_btn_event_cb, (void *)(intptr_t)DISPLAY_RING);
-    s_mode_btn_pendulum = make_button(screen, "Pend", 140, 58, SCREEN_CENTER_X + 7, 241,
-                                       mode_btn_event_cb, (void *)(intptr_t)DISPLAY_PENDULUM);
-    lv_obj_set_style_radius(s_mode_btn_ring, 10, 0);
-    lv_obj_set_style_radius(s_mode_btn_pendulum, 10, 0);
+    lv_obj_t *mode_row = lv_obj_create(screen);
+    lv_obj_remove_flag(mode_row, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_size(mode_row, 340, 58);
+    lv_obj_set_style_bg_opa(mode_row, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(mode_row, 0, 0);
+    lv_obj_set_style_pad_all(mode_row, 0, 0);
+    lv_obj_align(mode_row, LV_ALIGN_TOP_MID, 0, 241);
+
+    // Icons instead of text, and pulled in close to the switch itself (not
+    // pinned to the row's far edges) per request -- half the switch's own
+    // width (35) + half an icon's width (~16) + a small gap (~9).
+    s_mode_label_ring = lv_label_create(mode_row);
+    lv_label_set_text(s_mode_label_ring, ICON_CIRCLE_DASHED);
+    lv_obj_set_style_text_font(s_mode_label_ring, &lv_font_tabler_icons_32, 0);
+    lv_obj_align(s_mode_label_ring, LV_ALIGN_CENTER, -60, 0);
+
+    s_mode_switch = lv_switch_create(mode_row);
+    lv_obj_set_size(s_mode_switch, 70, 36);
+    lv_obj_align(s_mode_switch, LV_ALIGN_CENTER, 0, 0);
+    // Without this, a swipe that starts on the switch never reaches the
+    // screen-level gesture handler -- same reasoning as make_button_ex's
+    // own LV_OBJ_FLAG_GESTURE_BUBBLE above.
+    lv_obj_add_flag(s_mode_switch, LV_OBJ_FLAG_GESTURE_BUBBLE);
+    lv_obj_set_style_bg_color(s_mode_switch, lv_color_hex(COLOR_BTN), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(s_mode_switch, lv_color_hex(COLOR_BTN_ACTIVE), LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(s_mode_switch, lv_color_hex(COLOR_TEXT), LV_PART_KNOB);
+    // The knob-slide animation is driven by this style's anim_duration (see
+    // lv_switch_trigger_anim), not by a style transition -- the theme's
+    // default 120ms read as an instant snap rather than a visible slide.
+    lv_obj_set_style_anim_duration(s_mode_switch, 220, LV_PART_MAIN);
+    lv_obj_add_event_cb(s_mode_switch, mode_switch_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+
+    s_mode_label_pendulum = lv_label_create(mode_row);
+    lv_label_set_text(s_mode_label_pendulum, ICON_METRONOME);
+    lv_obj_set_style_text_font(s_mode_label_pendulum, &lv_font_tabler_icons_32, 0);
+    lv_obj_align(s_mode_label_pendulum, LV_ALIGN_CENTER, 60, 0);
 
     /* ---- start/stop ----
      * Tap tempo now lives on the BPM readout itself (see bpm_hit_area's
